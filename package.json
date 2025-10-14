@@ -1,0 +1,33 @@
+{
+    "name": "discord-sync-line-bot",
+    "version": "1.0.0",
+    "description": "整合 Discord 與 LINE 的 Bot",
+    "scripts": {
+        "start:line": "node line-bot/server.js",
+        "start:discord": "node discord-bot/server.js",
+        "start:all": "pm2 start ecosystem.config.js",
+        "stop:line": "pm2 stop line-bot",
+        "stop:discord": "pm2 stop discord-bot",
+        "stop:all": "pm2 stop all",
+        "delete:line": "pm2 delete line-bot",
+        "delete:discord": "pm2 delete discord-bot",
+        "delete:all": "pm2 delete all",
+        "restart:line": "pm2 restart line-bot",
+        "restart:discord": "pm2 restart discord-bot",
+        "restart:all": "pm2 restart all",
+        "logs:line": "pm2 logs line-bot --lines 100",
+        "logs:discord": "pm2 logs discord-bot --lines 100",
+        "logs:all": "pm2 logs --lines 100",
+        "monitor": "pm2 monit",
+        "list": "pm2 ls"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "discord.js": "^14.23.2",
+        "@line/bot-sdk": "^10.3.0",
+        "dotenv": "^17.2.3",
+        "express": "^5.1.0"
+    }
+}
