@@ -26,7 +26,7 @@ client.once('ready', () => {
 
 // 當有新訊息產生
 client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
+  if (message.author.id === client.user.id) return;
 
   if (message.content === '/health') {
     await message.reply('alive ✅');
