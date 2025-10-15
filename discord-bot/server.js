@@ -54,17 +54,23 @@ async function fetchMessages(afterId = null) {
   url.searchParams.set('limit', '50');
   if (afterId) url.searchParams.set('after', afterId);
 
-  const res = await fetch(url.toString(), {
-    headers: { 'Authorization': `Bot ${TOKEN}`, 'Content-Type': 'application/json' }
-  });
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { 'Authorization': `Bot ${TOKEN}`, 'Content-Type': 'application/json' }
+    });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API 錯誤：${res.status} ${res.statusText} - ${text}`);
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`API 錯誤：${res.status} ${res.statusText} - ${text}`);
+    }
+
+    return res.json();
+  } catch (err) {
+    console.error('❌ Discord fetchMessages 錯誤：', err);
+    throw err; // 繼續拋錯，讓上層知道
   }
-
-  return res.json();
 }
+
 
 // --- 處理訊息 ---
 async function processMessages(isFirstRun = false) {
