@@ -16,4 +16,4 @@ logs/
 Thumbs.db
 
 # Local data
-users.json
+*.json
