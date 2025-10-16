@@ -64,8 +64,11 @@ app.post('/webhook', middleware(config), (req, res) => {
 
   events.forEach(async e => {
     const time = new Date(e.timestamp).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
-    const sourceType = e.source?.type || 'unknown';
-    const sourceId = e.source?.userId || e.source?.groupId || e.source?.roomId || '未知';
+  const sourceType = e.source?.type || 'unknown';
+  let sourceId = '未知';
+  if (sourceType === 'user') sourceId = e.source?.userId;
+  else if (sourceType === 'group') sourceId = e.source?.groupId;
+  else if (sourceType === 'room') sourceId = e.source?.roomId;
     const type = e.type;
     const message = e.message?.text || '(非文字訊息)';
 
@@ -86,6 +89,10 @@ app.post('/webhook', middleware(config), (req, res) => {
     // 新來源加入
     if (sourceId && (type === 'follow' || type === 'join' || type === 'message') && !isKnownSource(sourceType, sourceId)) {
       knownSources.push({ type: sourceType, id: sourceId });
+      // 移除重複來源（只保留唯一 type+id）
+      knownSources = knownSources.filter((s, idx, arr) =>
+        arr.findIndex(t => t.type === s.type && t.id === s.id) === idx
+      );
       saveSources();
       console.log(`[${time}] ✅ 新來源已加入：${sourceType} (${sourceId})`);
     }
@@ -112,7 +119,10 @@ app.post('/notify', express.json(), async (req, res) => {
 
   console.log(`[${nowTW()}] 📨 從 Discord 收到訊息: ${message}`);
 
-  const pushList = [...knownSources];
+  // 發送訊息前，去除重複來源
+  const pushList = knownSources.filter((s, idx, arr) =>
+    arr.findIndex(t => t.type === s.type && t.id === s.id) === idx
+  );
   if (!pushList.length) {
     console.log(`[${nowTW()}] ⚠️ 尚無已知來源，略過推送`);
     return res.json({ success: false, reason: 'no users' });
