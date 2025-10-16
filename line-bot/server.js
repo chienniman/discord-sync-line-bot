@@ -17,53 +17,65 @@ const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const USERS_FILE = path.resolve(__dirname, 'users.json');
-let knownUsers = new Set();
+const SOURCES_FILE = path.resolve(__dirname, 'sources.json');
+let knownSources = [];
 
-const loadUsers = () => {
-  if (!fs.existsSync(USERS_FILE)) return;
-  try {
-    const data = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
-    knownUsers = new Set(data);
-    console.log(`📂 已載入 ${knownUsers.size} 位使用者`);
-  } catch (err) {
-    console.error('❌ 無法讀取 users.json：', err.message);
+function nowTW() {
+  return new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+}
+
+function loadSources() {
+  if (!fs.existsSync(SOURCES_FILE)) {
+    console.log(`[${nowTW()}] sources.json 不存在，將於首次寫入時建立`);
+    return;
   }
-};
-
-const saveUsers = () => {
   try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify([...knownUsers], null, 2));
-    console.log(`💾 已儲存 ${knownUsers.size} 位使用者`);
+    const data = JSON.parse(fs.readFileSync(SOURCES_FILE, 'utf8'));
+    knownSources = Array.isArray(data) ? data : [];
+    console.log(`[${nowTW()}] 已載入 ${knownSources.length} 個來源`);
   } catch (err) {
-    console.error('❌ 儲存 users.json 失敗：', err.message);
+    console.error(`[${nowTW()}] 讀取 sources.json 失敗:`, err.message);
   }
-};
+}
 
-loadUsers();
+function saveSources() {
+  try {
+    fs.writeFileSync(SOURCES_FILE, JSON.stringify(knownSources, null, 2));
+    console.log(`[${nowTW()}] 已儲存 ${knownSources.length} 個來源`);
+  } catch (err) {
+    console.error(`[${nowTW()}] 儲存 sources.json 失敗:`, err.message);
+  }
+}
+
+function isKnownSource(type, id) {
+  return knownSources.some(s => s.type === type && s.id === id);
+}
+
+loadSources();
 
 app.post('/webhook', middleware(config), (req, res) => {
   const events = req.body.events || [];
 
   if (!events.length) {
-    console.log('⚠️ 收到空的 events');
+    console.log(`[${nowTW()}] ⚠️ 收到空的 events`);
     return res.sendStatus(200);
   }
 
   events.forEach(async e => {
     const time = new Date(e.timestamp).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
-    const userId = e.source?.userId || '未知';
+    const sourceType = e.source?.type || 'unknown';
+    const sourceId = e.source?.userId || e.source?.groupId || e.source?.roomId || '未知';
     const type = e.type;
     const message = e.message?.text || '(非文字訊息)';
 
     console.log(`📩 收到 LINE 事件：
-                👤 使用者：${userId}
+                👤 來源：${sourceType} (${sourceId})
                 💬 類型：${type}
                 📝 內容：${message}
                 🕒 時間：${time}`);
 
     // 🩺 health check
-    if (message === '/health' && userId && type === 'message') {
+    if (message === '/health' && sourceId && type === 'message') {
       await client.replyMessage(e.replyToken, {
         type: 'text',
         text: 'alive ✅'
@@ -71,11 +83,11 @@ app.post('/webhook', middleware(config), (req, res) => {
       return;
     }
 
-    // 新使用者加入
-    if (userId && (type === 'follow' || type === 'message') && !knownUsers.has(userId)) {
-      knownUsers.add(userId);
-      saveUsers();
-      console.log(`✅ 新使用者已加入：${userId}`);
+    // 新來源加入
+    if (sourceId && (type === 'follow' || type === 'join' || type === 'message') && !isKnownSource(sourceType, sourceId)) {
+      knownSources.push({ type: sourceType, id: sourceId });
+      saveSources();
+      console.log(`[${time}] ✅ 新來源已加入：${sourceType} (${sourceId})`);
     }
   });
 
@@ -88,27 +100,27 @@ app.post('/notify', express.json(), async (req, res) => {
   const message = body.message;
   if (!message) return res.status(400).json({ error: '缺少 message' });
 
-  console.log(`📨 從 Discord 收到訊息: ${message}`);
+  console.log(`[${nowTW()}] 📨 從 Discord 收到訊息: ${message}`);
 
-  const pushList = [...knownUsers];
+  const pushList = [...knownSources];
   if (!pushList.length) {
-    console.log('⚠️ 尚無已知使用者，略過推送');
+    console.log(`[${nowTW()}] ⚠️ 尚無已知來源，略過推送`);
     return res.json({ success: false, reason: 'no users' });
   }
 
   const results = await Promise.all(
-    pushList.map(userId =>
-      client.pushMessage(userId, { type: 'text', text: message })
-        .then(() => ({ userId, success: true }))
+    pushList.map(source =>
+      client.pushMessage(source.id, { type: 'text', text: message })
+        .then(() => ({ ...source, success: true }))
         .catch(err => {
-          console.error(`❌ 推送給 ${userId} 失敗：`, err.message);
-          return { userId, success: false, error: err.message };
+          console.error(`[${nowTW()}] ❌ 推送給 ${source.type}(${source.id}) 失敗：`, err.message);
+          return { ...source, success: false, error: err.message };
         })
     )
   );
 
   const successCount = results.filter(r => r.success).length;
-  console.log(`✅ 推播完成：${successCount}/${pushList.length} 成功`);
+  console.log(`[${nowTW()}] ✅ 推播完成：${successCount}/${pushList.length} 成功`);
   res.json({ success: true, sentTo: successCount });
 });
 
