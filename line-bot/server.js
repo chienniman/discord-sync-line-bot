@@ -61,6 +61,7 @@ app.post('/webhook', middleware(config), (req, res) => {
     return res.sendStatus(200);
   }
 
+
   events.forEach(async e => {
     const time = new Date(e.timestamp).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
     const sourceType = e.source?.type || 'unknown';
@@ -68,11 +69,10 @@ app.post('/webhook', middleware(config), (req, res) => {
     const type = e.type;
     const message = e.message?.text || '(非文字訊息)';
 
-    console.log(`📩 收到 LINE 事件：
-                👤 來源：${sourceType} (${sourceId})
-                💬 類型：${type}
-                📝 內容：${message}
-                🕒 時間：${time}`);
+    console.log(`[${time}] 📩 收到 LINE 事件：`);
+    console.log(`[${time}] 👤 來源：${sourceType} (${sourceId})`);
+    console.log(`[${time}] 💬 類型：${type}`);
+    console.log(`[${time}] 📝 內容：${message}`);
 
     // 🩺 health check
     if (message === '/health' && sourceId && type === 'message') {
@@ -136,5 +136,5 @@ app.post('/notify', express.json(), async (req, res) => {
 
 
 app.listen(PORT, () => {
-  console.log(`🚀 LINE bot 已啟動於 http://localhost:${PORT}`);
+  console.log(`[${nowTW()}] 🚀 LINE bot 已啟動於 http://localhost:${PORT}`);
 });
