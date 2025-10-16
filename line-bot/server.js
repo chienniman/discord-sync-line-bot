@@ -89,6 +89,16 @@ app.post('/webhook', middleware(config), (req, res) => {
       saveSources();
       console.log(`[${time}] ✅ 新來源已加入：${sourceType} (${sourceId})`);
     }
+
+    // 封鎖/移除來源
+    if ((type === 'unfollow' && sourceType === 'user') || (type === 'leave' && (sourceType === 'group' || sourceType === 'room'))) {
+      const before = knownSources.length;
+      knownSources = knownSources.filter(s => !(s.type === sourceType && s.id === sourceId));
+      if (knownSources.length < before) {
+        saveSources();
+        console.log(`[${time}] 🚫 來源已移除：${sourceType} (${sourceId})`);
+      }
+    }
   });
 
   res.sendStatus(200);
