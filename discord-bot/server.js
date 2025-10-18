@@ -14,29 +14,29 @@ if (!TOKEN || !CHANNEL_ID) {
 // 獲取當天所有訊息
 async function getTodayMessages() {
   const today = getTodayTW();
-  console.log(`📅 查詢 ${today} 的動漫更新（最近100筆）...`);
+  console.log(`[${nowTW()}] 📅 查詢 ${today} 的動漫更新（最近100筆）...`);
   
   try {
     // 直接拉取最近 100 筆訊息
     const messages = await fetchMessages(null, 100);
-    console.log(`📥 獲取到 ${messages.length} 則最近訊息`);
+    console.log(`[${nowTW()}] 📥 獲取到 ${messages.length} 則最近訊息`);
     
     // 輸出原始訊息資料用於除錯
-    console.log('=== 原始訊息資料 (前30筆) ===');
+    console.log(`[${nowTW()}] === 原始訊息資料 (前30筆) ===`);
     messages.slice(0, 30).forEach((msg, index) => {
-      console.log(`\n訊息 ${index + 1}:`);
-      console.log(`  ID: ${msg.id}`);
-      console.log(`  作者: ${msg.author.username} (ID: ${msg.author.id}, bot: ${msg.author.bot})`);
-      console.log(`  時間: ${msg.timestamp}`);
-      console.log(`  內容: "${msg.content}"`);
-      console.log(`  Embeds: ${msg.embeds?.length || 0} 個`);
-      console.log(`  Attachments: ${msg.attachments?.length || 0} 個`);
+      console.log(`[${nowTW()}] \n訊息 ${index + 1}:`);
+      console.log(`[${nowTW()}]   ID: ${msg.id}`);
+      console.log(`[${nowTW()}]   作者: ${msg.author.username} (ID: ${msg.author.id}, bot: ${msg.author.bot})`);
+      console.log(`[${nowTW()}]   時間: ${msg.timestamp}`);
+      console.log(`[${nowTW()}]   內容: "${msg.content}"`);
+      console.log(`[${nowTW()}]   Embeds: ${msg.embeds?.length || 0} 個`);
+      console.log(`[${nowTW()}]   Attachments: ${msg.attachments?.length || 0} 個`);
       if (msg.embeds?.length > 0) {
-        console.log(`  Embed URLs: ${msg.embeds.map(e => e.url).filter(Boolean)}`);
+        console.log(`[${nowTW()}]   Embed URLs: ${msg.embeds.map(e => e.url).filter(Boolean)}`);
       }
-      console.log(`  isToday(): ${isToday(msg.timestamp)}`);
+      console.log(`[${nowTW()}]   isToday(): ${isToday(msg.timestamp)}`);
     });
-    console.log('=== 原始訊息資料結束 ===\n');
+    console.log(`[${nowTW()}] === 原始訊息資料結束 ===\n`);
     
     const todayMessages = [];
     
@@ -49,17 +49,17 @@ async function getTodayMessages() {
       
       // 過濾 bot 訊息和指令，但保留動漫更新 bot
       if (msg.author.bot && msg.author.username !== 'Anime1.me #更新通知') {
-        console.log(`⚠️ 略過: [${msg.author.username} (bot)] ${msg.content || '(embed)'}`);
+        console.log(`[${nowTW()}] ⚠️ 略過: [${msg.author.username} (bot)] ${msg.content || '(embed)'}`);
         continue;
       }
       
       // 過濾指令訊息
       if (msg.content?.startsWith('/')) {
-        console.log(`⚠️ 略過: [${msg.author.username}] ${msg.content}`);
+        console.log(`[${nowTW()}] ⚠️ 略過: [${msg.author.username}] ${msg.content}`);
         continue;
       }
       
-      console.log(`✅ 找到動漫更新: [${msg.author.username}] ${msg.content || '(embed)'}`.substring(0, 100));
+      console.log(`[${nowTW()}] ✅ 找到動漫更新: [${msg.author.username}] ${msg.content || '(embed)'}`.substring(0, 100));
       
       let contentToSend = '';
       
@@ -91,11 +91,11 @@ async function getTodayMessages() {
       });
     }
     
-    console.log(`📊 查詢完成，共找到 ${todayMessages.length} 則今日動漫更新`);
+    console.log(`[${nowTW()}] 📊 查詢完成，共找到 ${todayMessages.length} 則今日動漫更新`);
     return todayMessages;
     
   } catch (err) {
-    console.error('❌ 查詢當日訊息失敗：', err.message);
+    console.error(`[${nowTW()}] ❌ 查詢當日訊息失敗：`, err.message);
     return [];
   }
 }
@@ -106,6 +106,11 @@ const client = new Client({
 });
 
 const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+// 時間格式化函數 - 台灣時間
+function nowTW() {
+  return new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+}
 
 // 統一使用台灣時區
 function getTodayTW() {
@@ -169,20 +174,20 @@ async function fetchMessages(afterId = null, limit = 50) {
 
     return res.json();
   } catch (err) {
-    console.error('❌ Discord fetchMessages 錯誤：', err);
+    console.error(`[${nowTW()}] ❌ Discord fetchMessages 錯誤：`, err);
     throw err; // 繼續拋出錯誤
   }
 }
 
 // 測試批次推播
 async function testDailyBatch() {
-  console.log('🧪 === 測試模式：模擬每日批次推播 ===');
+  console.log(`[${nowTW()}] 🧪 === 測試模式：模擬每日批次推播 ===`);
   
   // 直接查詢過濾後的訊息
   const todayMessages = await getTodayMessages();
   
   if (todayMessages.length === 0) {
-    console.log('📭 測試結果：今日無新訊息');
+    console.log(`[${nowTW()}] 📭 測試結果：今日無新訊息`);
     return;
   }
 
@@ -195,21 +200,21 @@ async function testDailyBatch() {
       `${index + 1}. [${msg.author}] ${msg.content}`
     ).join('\n\n');
 
-  console.log('🧪 === 測試結果：將要推播的內容 ===');
-  console.log(combinedMessage);
-  console.log('🧪 === 測試完成 ===');
-  console.log(`📊 統計：共 ${todayMessages.length} 則訊息，合併後長度 ${combinedMessage.length} 字元`);
+  console.log(`[${nowTW()}] 🧪 === 測試結果：將要推播的內容 ===`);
+  console.log(`[${nowTW()}] ${combinedMessage}`);
+  console.log(`[${nowTW()}] 🧪 === 測試完成 ===`);
+  console.log(`[${nowTW()}] 📊 統計：共 ${todayMessages.length} 則訊息，合併後長度 ${combinedMessage.length} 字元`);
 }
 
 // 批次推播當日訊息
 async function sendDailyBatch() {
-  console.log('⏰ 開始執行每日批次推播...');
+  console.log(`[${nowTW()}] ⏰ 開始執行每日批次推播...`);
   
   // 直接查詢當天所有訊息
   const todayMessages = await getTodayMessages();
   
   if (todayMessages.length === 0) {
-    console.log('📭 今日無新訊息，略過推播');
+    console.log(`[${nowTW()}] 📭 今日無新訊息，略過推播`);
     return;
   }
 
@@ -222,7 +227,7 @@ async function sendDailyBatch() {
       `${index + 1}. [${msg.author}] ${msg.content}`
     ).join('\n\n');
 
-  console.log(`📤 準備推播當日合併訊息 (共 ${todayMessages.length} 則)`);
+  console.log(`[${nowTW()}] 📤 準備推播當日合併訊息 (共 ${todayMessages.length} 則)`);
 
   try {
     const response = await fetch('http://localhost:3000/notify', {
@@ -238,16 +243,16 @@ async function sendDailyBatch() {
     }
 
     const result = await response.json();
-    console.log(`✅ 批次推播成功：${JSON.stringify(result)}`);
+    console.log(`[${nowTW()}] ✅ 批次推播成功：${JSON.stringify(result)}`);
     
   } catch (error) {
-    console.error(`❌ 批次推播失敗:`, error.message);
+    console.error(`[${nowTW()}] ❌ 批次推播失敗:`, error.message);
   }
 }
 
 // Discord 事件
 client.once('ready', async () => {
-  console.log(`✅ 已登入 Discord Bot：${client.user.tag}`);
+  console.log(`[${nowTW()}] ✅ 已登入 Discord Bot：${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -255,19 +260,19 @@ client.on('messageCreate', async (message) => {
 
   if (message.content === '/health') {
     await message.reply('alive ✅');
-    console.log(`🩺 /health 回覆給 ${message.author.tag}`);
+    console.log(`[${nowTW()}] 🩺 /health 回覆給 ${message.author.tag}`);
   }
 
   if (message.content === '/test-daily') {
     await message.reply('🧪 測試模式：開始查詢今日訊息...');
-    console.log(`🧪 測試模式觸發 - 由 ${message.author.tag} 執行`);
+    console.log(`[${nowTW()}] 🧪 測試模式觸發 - 由 ${message.author.tag} 執行`);
     await testDailyBatch();
   }
 });
 
 // 每日批次推播排程
 cron.schedule(DAILY_PUSH_CRON, async () => {
-  console.log('⏰ 觸發每日批次推播');
+  console.log(`[${nowTW()}] ⏰ 觸發每日批次推播`);
   await sendDailyBatch();
 }, {
   timezone: "Asia/Taipei"
