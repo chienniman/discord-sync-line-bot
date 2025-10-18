@@ -22,21 +22,15 @@ async function getTodayMessages() {
     console.log(`[${nowTW()}] 📥 獲取到 ${messages.length} 則最近訊息`);
     
     // 輸出原始訊息資料用於除錯
-    // console.log(`[${nowTW()}] === 原始訊息資料 (前30筆) ===`);
-    // messages.slice(0, 30).forEach((msg, index) => {
-    //   console.log(`[${nowTW()}] \n訊息 ${index + 1}:`);
-    //   console.log(`[${nowTW()}]   ID: ${msg.id}`);
-    //   console.log(`[${nowTW()}]   作者: ${msg.author.username} (ID: ${msg.author.id}, bot: ${msg.author.bot})`);
-    //   console.log(`[${nowTW()}]   時間: ${msg.timestamp}`);
-    //   console.log(`[${nowTW()}]   內容: "${msg.content}"`);
-    //   console.log(`[${nowTW()}]   Embeds: ${msg.embeds?.length || 0} 個`);
-    //   console.log(`[${nowTW()}]   Attachments: ${msg.attachments?.length || 0} 個`);
-    //   if (msg.embeds?.length > 0) {
-    //     console.log(`[${nowTW()}]   Embed URLs: ${msg.embeds.map(e => e.url).filter(Boolean)}`);
-    //   }
-    //   console.log(`[${nowTW()}]   isToday(): ${isToday(msg.timestamp)}`);
-    // });
-    // console.log(`[${nowTW()}] === 原始訊息資料結束 ===\n`);
+    console.log(`[${nowTW()}] === 時間戳除錯資訊 (前5筆) ===`);
+    messages.slice(0, 5).forEach((msg, index) => {
+      const parsed = parseDiscordTimestamp(msg.timestamp);
+      const taiwanDateStr = parsed ? parsed.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }) : 'null';
+      const isTodayResult = isToday(msg.timestamp);
+      console.log(`[${nowTW()}] 訊息${index + 1}: 時間戳=${msg.timestamp}`);
+      console.log(`[${nowTW()}]   解析後台灣日期=${taiwanDateStr}, 目標日期=${today}, isToday=${isTodayResult}`);
+    });
+    console.log(`[${nowTW()}] === 時間戳除錯結束 ===`);
     
     const todayMessages = [];
     
