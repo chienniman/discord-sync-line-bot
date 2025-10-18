@@ -63,32 +63,52 @@ async function getTodayMessages() {
       
       let contentToSend = '';
       
-      // 判斷訊息內容
-      if ((msg.embeds?.length > 0) || (msg.attachments?.length > 0)) {
-        // 取連結
-        const links = [];
-        for (const embed of msg.embeds || []) {
-          if (embed.url) links.push(embed.url);
-          if (embed.description) {
-            const found = embed.description.match(urlRegex);
-            if (found) links.push(...found);
+      // 處理 embed 訊息，提取標題和連結
+      if (msg.embeds?.length > 0) {
+        const embeds = [];
+        for (const embed of msg.embeds) {
+          const title = embed.title || '未知動漫';
+          const url = embed.url;
+          
+          if (url) {
+            embeds.push(`📺 ${title}\n${url}`);
+          } else if (embed.description) {
+            // 從描述中提取連結
+            const links = embed.description.match(urlRegex) || [];
+            if (links.length > 0) {
+              embeds.push(`📺 ${title}\n${links.join('\n')}`);
+            }
           }
         }
-        for (const att of msg.attachments || []) {
-          if (att.url) links.push(att.url);
-        }
-        contentToSend = links.join('\n') || msg.content || '';
-      } else {
-        // 取文字內容
-        contentToSend = msg.content || '';
+        contentToSend = embeds.join('\n\n');
       }
       
-      todayMessages.push({
-        author: msg.author.username,
-        content: contentToSend || '<無文字>',
-        timestamp: msg.timestamp,
-        id: msg.id
-      });
+      // 處理附件
+      if (msg.attachments?.length > 0) {
+        const attachments = Array.from(msg.attachments.values())
+          .map(att => `📎 附件: ${att.name}\n${att.url}`)
+          .join('\n\n');
+        
+        if (contentToSend) {
+          contentToSend += '\n\n' + attachments;
+        } else {
+          contentToSend = attachments;
+        }
+      }
+      
+      // 如果沒有 embed 或附件，使用文字內容
+      if (!contentToSend && msg.content) {
+        contentToSend = msg.content;
+      }
+      
+      if (contentToSend) {
+        todayMessages.push({
+          author: msg.author.username,
+          content: contentToSend,
+          timestamp: msg.timestamp,
+          id: msg.id
+        });
+      }
     }
     
     console.log(`[${nowTW()}] 📊 查詢完成，共找到 ${todayMessages.length} 則今日動漫更新`);
@@ -194,11 +214,16 @@ async function testDailyBatch() {
   // 按時間排序（舊到新）
   todayMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-  // 合併所有訊息
+  // 合併所有訊息，改善格式顯示
   const combinedMessage = `🗓️ 今日動漫更新 (${todayMessages.length} 則)\n\n` +
-    todayMessages.map((msg, index) => 
-      `${index + 1}. [${msg.author}] ${msg.content}`
-    ).join('\n\n');
+    todayMessages.map((msg, index) => {
+      const time = new Date(msg.timestamp).toLocaleTimeString('zh-TW', { 
+        timeZone: 'Asia/Taipei',
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      return `${index + 1}. 【${time}】\n${msg.content}`;
+    }).join('\n\n─────────────\n\n');
 
   console.log(`[${nowTW()}] 🧪 === 測試結果：將要推播的內容 ===`);
   console.log(`[${nowTW()}] ${combinedMessage}`);
@@ -221,11 +246,16 @@ async function sendDailyBatch() {
   // 按時間排序（舊到新）
   todayMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-  // 合併所有訊息
+  // 合併所有訊息，改善格式顯示
   const combinedMessage = `🗓️ 今日動漫更新 (${todayMessages.length} 則)\n\n` +
-    todayMessages.map((msg, index) => 
-      `${index + 1}. [${msg.author}] ${msg.content}`
-    ).join('\n\n');
+    todayMessages.map((msg, index) => {
+      const time = new Date(msg.timestamp).toLocaleTimeString('zh-TW', { 
+        timeZone: 'Asia/Taipei',
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      return `${index + 1}. 【${time}】\n${msg.content}`;
+    }).join('\n\n─────────────\n\n');
 
   console.log(`[${nowTW()}] 📤 準備推播當日合併訊息 (共 ${todayMessages.length} 則)`);
 
