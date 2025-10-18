@@ -18,18 +18,20 @@ async function getTodayMessages() {
   
   try {
     // 直接拉取最近 100 筆訊息
+    console.log(`[${nowTW()}] 🔍 開始抓取 Discord 訊息...`);
     const messages = await fetchMessages(null, 100);
     console.log(`[${nowTW()}] 📥 獲取到 ${messages.length} 則最近訊息`);
     
     // 輸出原始訊息資料用於除錯
     console.log(`[${nowTW()}] === 時間戳除錯資訊 (前5筆) ===`);
-    messages.slice(0, 5).forEach((msg, index) => {
+    for (let i = 0; i < Math.min(5, messages.length); i++) {
+      const msg = messages[i];
       const parsed = parseDiscordTimestamp(msg.timestamp);
       const taiwanDateStr = parsed ? parsed.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }) : 'null';
       const isTodayResult = isToday(msg.timestamp);
-      console.log(`[${nowTW()}] 訊息${index + 1}: 時間戳=${msg.timestamp}`);
+      console.log(`[${nowTW()}] 訊息${i + 1}: 時間戳=${msg.timestamp}`);
       console.log(`[${nowTW()}]   解析後台灣日期=${taiwanDateStr}, 目標日期=${today}, isToday=${isTodayResult}`);
-    });
+    }
     console.log(`[${nowTW()}] === 時間戳除錯結束 ===`);
     
     const todayMessages = [];
@@ -128,9 +130,7 @@ function nowTW() {
 
 // 統一使用台灣時區
 function getTodayTW() {
-  const now = new Date();
-  const taiwanTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
-  return taiwanTime.toISOString().split('T')[0];
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
 }
 
 // Discord 時間戳解析函數 - 處理微秒格式
@@ -168,28 +168,46 @@ const isToday = (timestamp) => {
   return taiwanDateStr === todayTW;
 };
 
-// 抓取訊息
-async function fetchMessages(afterId = null, limit = 50) {
-  // 使用與 testAPI.js 相同的 URL 構建方式
+// 抓取訊息 (帶重試機制)
+async function fetchMessages(afterId = null, limit = 50, retries = 3) {
   let url = `https://discord.com/api/v10/channels/${CHANNEL_ID}/messages?limit=${limit}`;
   if (afterId) {
     url += `&after=${afterId}`;
   }
 
-  try {
-    const res = await fetch(url, {
-      headers: { 'Authorization': `Bot ${TOKEN}`, 'Content-Type': 'application/json' }
-    });
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`[${nowTW()}] 🔄 第${attempt}次嘗試連接 Discord API...`);
+      
+      const res = await fetch(url, {
+        headers: { 
+          'Authorization': `Bot ${TOKEN}`, 
+          'Content-Type': 'application/json' 
+        },
+        signal: AbortSignal.timeout(15000) // 15秒超時
+      });
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`API 錯誤：${res.status} ${res.statusText} - ${text}`);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`API 錯誤：${res.status} ${res.statusText} - ${text}`);
+      }
+
+      console.log(`[${nowTW()}] ✅ Discord API 連接成功`);
+      return res.json();
+      
+    } catch (err) {
+      console.error(`[${nowTW()}] ❌ 第${attempt}次嘗試失敗：`, err.message);
+      
+      if (attempt === retries) {
+        console.error(`[${nowTW()}] 💀 所有重試都失敗，放棄連接`);
+        throw new Error(`Discord API 連接失敗 (重試${retries}次): ${err.message}`);
+      }
+      
+      // 等待後重試
+      const waitTime = attempt * 2000; // 2秒, 4秒, 6秒
+      console.log(`[${nowTW()}] ⏳ 等待 ${waitTime}ms 後重試...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
-
-    return res.json();
-  } catch (err) {
-    console.error(`[${nowTW()}] ❌ Discord fetchMessages 錯誤：`, err);
-    throw err; // 繼續拋出錯誤
   }
 }
 
@@ -275,7 +293,7 @@ async function sendDailyBatch() {
 }
 
 // Discord 事件
-client.once('ready', async () => {
+client.once('clientReady', async () => {
   console.log(`[${nowTW()}] ✅ 已登入 Discord Bot：${client.user.tag}`);
 });
 
