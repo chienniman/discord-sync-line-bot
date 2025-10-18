@@ -1,11 +1,12 @@
 {
     "name": "discord-sync-line-bot",
     "version": "1.0.0",
+    "type": "module",
     "description": "整合 Discord 與 LINE 的 Bot",
     "scripts": {
         "start:line": "node line-bot/server.js",
         "start:discord": "node discord-bot/server.js",
-        "start:all": "pm2 start ecosystem.config.js",
+        "start:all": "pm2 start ecosystem.config.cjs",
         "stop:line": "pm2 stop line-bot",
         "stop:discord": "pm2 stop discord-bot",
         "stop:all": "pm2 stop all",
