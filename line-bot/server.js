@@ -72,10 +72,13 @@ app.post('/webhook', middleware(config), (req, res) => {
     const type = e.type;
     const message = e.message?.text || '(非文字訊息)';
 
-    console.log(`[${time}] 📩 收到 LINE 事件：`);
-    console.log(`[${time}] 👤 來源：${sourceType} (${sourceId})`);
-    console.log(`[${time}] 💬 類型：${type}`);
-    console.log(`[${time}] 📝 內容：${message}`);
+    // 只記錄非 message 事件，或者是指令訊息
+    if (type !== 'message' || (type === 'message' && message.startsWith('/'))) {
+      console.log(`[${time}] 📩 收到 LINE 事件：`);
+      console.log(`[${time}] 👤 來源：${sourceType} (${sourceId})`);
+      console.log(`[${time}] 💬 類型：${type}`);
+      console.log(`[${time}] 📝 內容：${message}`);
+    }
 
     // 🩺 health check
     if (message === '/health' && sourceId && type === 'message') {
